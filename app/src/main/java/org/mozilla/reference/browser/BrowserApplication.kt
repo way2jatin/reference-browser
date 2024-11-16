@@ -6,9 +6,7 @@ package org.mozilla.reference.browser
 
 import android.app.Application
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -53,9 +51,12 @@ open class BrowserApplication : Application() {
         }
 
         components.core.engine.warmUp()
-
         restoreBrowserState()
 
+        initializeComponents()
+    }
+
+    private fun initializeComponents() {
         GlobalAddonDependencyProvider.initialize(
             components.core.addonManager,
             components.core.addonUpdater,
@@ -126,19 +127,17 @@ open class BrowserApplication : Application() {
         applicationScope.cancel("onLowMemory() called")
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    private fun restoreBrowserState() = GlobalScope.launch(Dispatchers.Main) {
-        val store = components.core.store
-        val sessionStorage = components.core.sessionStorage
+    private fun restoreBrowserState() {
+        applicationScope.launch(Dispatchers.Main) {
+            val store = components.core.store
+            val sessionStorage = components.core.sessionStorage
 
-        components.useCases.tabsUseCases.restore(sessionStorage)
-
-        // Now that we have restored our previous state (if there's one) let's setup auto saving the state while
-        // the app is used.
-        sessionStorage.autoSave(store)
-            .periodicallyInForeground(interval = 30, unit = TimeUnit.SECONDS)
-            .whenGoingToBackground()
-            .whenSessionsChange()
+            components.useCases.tabsUseCases.restore(sessionStorage)
+            sessionStorage.autoSave(store)
+                .periodicallyInForeground(interval = 30, unit = TimeUnit.SECONDS)
+                .whenGoingToBackground()
+                .whenSessionsChange()
+        }
     }
 
     companion object {
