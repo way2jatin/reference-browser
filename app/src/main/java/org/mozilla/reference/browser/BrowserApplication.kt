@@ -5,9 +5,12 @@
 package org.mozilla.reference.browser
 
 import android.app.Application
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import mozilla.components.browser.state.action.SystemAction
 import mozilla.components.concept.engine.webextension.isUnsupported
@@ -28,14 +31,18 @@ import java.util.concurrent.TimeUnit
 
 open class BrowserApplication : Application() {
     val components by lazy { Components(this) }
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
 
     override fun onCreate() {
         super.onCreate()
 
-        setupCrashReporting(this)
+        applicationScope.launch {
+            setupCrashReporting(this@BrowserApplication)
+            RustHttpConfig.setClient(lazy { components.core.client })
+            setupLogging()
+        }
 
-        RustHttpConfig.setClient(lazy { components.core.client })
-        setupLogging()
 
         if (!isMainProcess()) {
             // If this is not the main process then do not continue with the initialization here. Everything that
@@ -100,8 +107,7 @@ open class BrowserApplication : Application() {
             // Initialize the push feature and service.
             it.initialize()
         }
-        @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(Dispatchers.IO) {
+        applicationScope.launch {
             components.core.fileUploadsDirCleaner.cleanUploadsDirectory()
         }
     }
@@ -112,6 +118,12 @@ open class BrowserApplication : Application() {
             components.core.store.dispatch(SystemAction.LowMemoryAction(level))
             components.core.icons.onTrimMemory(level)
         }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onLowMemory() {
+        super.onLowMemory()
+        applicationScope.cancel("onLowMemory() called")
     }
 
     @OptIn(DelicateCoroutinesApi::class)
