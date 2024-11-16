@@ -9,8 +9,6 @@ import android.view.View
 import androidx.preference.PreferenceManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import mozilla.components.browser.thumbnails.BrowserThumbnails
-import mozilla.components.browser.toolbar.BrowserToolbar
-import mozilla.components.concept.engine.EngineView
 import mozilla.components.feature.awesomebar.AwesomeBarFeature
 import mozilla.components.feature.awesomebar.provider.SearchSuggestionProvider
 import mozilla.components.feature.readerview.view.ReaderViewControlsBar
@@ -37,10 +35,6 @@ class BrowserFragment : BaseBrowserFragment(), UserInteractionHandler {
 
     private val awesomeBar: AwesomeBarWrapper
         get() = requireView().findViewById(R.id.awesomeBar)
-    private val toolbar: BrowserToolbar
-        get() = requireView().findViewById(R.id.toolbar)
-    private val engineView: EngineView
-        get() = requireView().findViewById<View>(R.id.engineView) as EngineView
     private val readerViewBar: ReaderViewControlsBar
         get() = requireView().findViewById(R.id.readerViewBar)
     private val readerViewAppearanceButton: FloatingActionButton
@@ -56,27 +50,30 @@ class BrowserFragment : BaseBrowserFragment(), UserInteractionHandler {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        AwesomeBarFeature(awesomeBar, toolbar, engineView)
-            .addSearchProvider(
-                requireContext(),
-                requireComponents.core.store,
-                requireComponents.useCases.searchUseCases.defaultSearch,
-                fetchClient = requireComponents.core.client,
-                mode = SearchSuggestionProvider.Mode.MULTIPLE_SUGGESTIONS,
-                engine = requireComponents.core.engine,
-                limit = 5,
-                filterExactMatch = true,
-            )
-            .addSessionProvider(
-                resources,
-                requireComponents.core.store,
-                requireComponents.useCases.tabsUseCases.selectTab,
-            )
-            .addHistoryProvider(
-                requireComponents.core.historyStorage,
-                requireComponents.useCases.sessionUseCases.loadUrl,
-            )
-            .addClipboardProvider(requireContext(), requireComponents.useCases.sessionUseCases.loadUrl)
+
+        toolbar?.let { toolbar ->
+            AwesomeBarFeature(awesomeBar, toolbar, engineView)
+                .addSearchProvider(
+                    requireContext(),
+                    requireComponents.core.store,
+                    requireComponents.useCases.searchUseCases.defaultSearch,
+                    fetchClient = requireComponents.core.client,
+                    mode = SearchSuggestionProvider.Mode.MULTIPLE_SUGGESTIONS,
+                    engine = requireComponents.core.engine,
+                    limit = 5,
+                    filterExactMatch = true,
+                )
+                .addSessionProvider(
+                    resources,
+                    requireComponents.core.store,
+                    requireComponents.useCases.tabsUseCases.selectTab,
+                )
+                .addHistoryProvider(
+                    requireComponents.core.historyStorage,
+                    requireComponents.useCases.sessionUseCases.loadUrl,
+                )
+                .addClipboardProvider(requireContext(), requireComponents.useCases.sessionUseCases.loadUrl)
+        }
 
         // We cannot really add a `addSyncedTabsProvider` to `AwesomeBarFeature` coz that would create
         // a dependency on feature-syncedtabs (which depends on Sync).
@@ -88,45 +85,54 @@ class BrowserFragment : BaseBrowserFragment(), UserInteractionHandler {
             ),
         )
 
-        TabsToolbarFeature(
-            toolbar = toolbar,
-            sessionId = sessionId,
-            store = requireComponents.core.store,
-            showTabs = ::showTabs,
-            lifecycleOwner = this,
-        )
+        toolbar?.let { toolbar ->
+            TabsToolbarFeature(
+                toolbar = toolbar,
+                sessionId = sessionId,
+                store = requireComponents.core.store,
+                showTabs = ::showTabs,
+                lifecycleOwner = this,
+            )
+        }
 
-        thumbnailsFeature.set(
-            feature = BrowserThumbnails(
-                requireContext(),
-                engineView,
-                requireComponents.core.store,
-            ),
-            owner = this,
-            view = view,
-        )
+        engineView?.let { engineView ->
+            thumbnailsFeature.set(
+                feature = BrowserThumbnails(
+                    requireContext(),
+                    engineView,
+                    requireComponents.core.store,
+                ),
+                owner = this,
+                view = view,
+            )
+        }
 
-        readerViewFeature.set(
-            feature = ReaderViewIntegration(
-                requireContext(),
-                requireComponents.core.engine,
-                requireComponents.core.store,
-                toolbar,
-                readerViewBar,
-                readerViewAppearanceButton,
-            ),
-            owner = this,
-            view = view,
-        )
+        toolbar?.let { toolbar ->
+            readerViewFeature.set(
+                feature = ReaderViewIntegration(
+                    requireContext(),
+                    requireComponents.core.engine,
+                    requireComponents.core.store,
+                    toolbar,
+                    readerViewBar,
+                    readerViewAppearanceButton,
+                ),
+                owner = this,
+                view = view,
+            )
+        }
 
-        webExtToolbarFeature.set(
-            feature = WebExtensionToolbarFeature(
-                toolbar,
-                requireContext().components.core.store,
-            ),
-            owner = this,
-            view = view,
-        )
+        toolbar?.let { toolbar ->
+            webExtToolbarFeature.set(
+                feature = WebExtensionToolbarFeature(
+                    toolbar,
+                    requireContext().components.core.store,
+                ),
+                owner = this,
+                view = view,
+            )
+        }
+
 
         windowFeature.set(
             feature = WindowFeature(
@@ -137,7 +143,7 @@ class BrowserFragment : BaseBrowserFragment(), UserInteractionHandler {
             view = view,
         )
 
-        engineView.setDynamicToolbarMaxHeight(resources.getDimensionPixelSize(R.dimen.browser_toolbar_height))
+        engineView?.setDynamicToolbarMaxHeight(resources.getDimensionPixelSize(R.dimen.browser_toolbar_height))
     }
 
     private fun showTabs() {

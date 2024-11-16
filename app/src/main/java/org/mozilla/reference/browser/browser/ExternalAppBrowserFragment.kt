@@ -8,8 +8,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import androidx.core.view.isVisible
-import mozilla.components.browser.toolbar.BrowserToolbar
-import mozilla.components.concept.engine.EngineView
 import mozilla.components.concept.engine.manifest.WebAppManifest
 import mozilla.components.feature.customtabs.CustomTabWindowFeature
 import mozilla.components.feature.pwa.ext.getWebAppManifest
@@ -20,8 +18,6 @@ import mozilla.components.feature.pwa.feature.WebAppSiteControlsFeature
 import mozilla.components.support.base.feature.UserInteractionHandler
 import mozilla.components.support.base.feature.ViewBoundFeatureWrapper
 import mozilla.components.support.ktx.android.arch.lifecycle.addObservers
-import mozilla.components.support.utils.ext.getParcelableArrayListCompat
-import org.mozilla.reference.browser.R
 import org.mozilla.reference.browser.ext.requireComponents
 
 /**
@@ -34,15 +30,8 @@ class ExternalAppBrowserFragment : BaseBrowserFragment(), UserInteractionHandler
 
     override val shouldUseComposeUI: Boolean = false
 
-    private val toolbar: BrowserToolbar
-        get() = requireView().findViewById(R.id.toolbar)
-    private val engineView: EngineView
-        get() = requireView().findViewById<View>(R.id.engineView) as EngineView
-
     private val manifest: WebAppManifest?
         get() = arguments?.getWebAppManifest()
-    private val trustedScopes: List<Uri>
-        get() = arguments?.getParcelableArrayListCompat(ARG_TRUSTED_SCOPES, Uri::class.java).orEmpty()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -50,45 +39,52 @@ class ExternalAppBrowserFragment : BaseBrowserFragment(), UserInteractionHandler
         val manifest = this.manifest
         val sessionId = this.sessionId
 
-        customTabsIntegration.set(
-            feature = CustomTabsIntegration(
-                requireContext(),
-                requireComponents.core.store,
-                toolbar,
-                engineView,
-                requireComponents.useCases.sessionUseCases,
-                requireComponents.useCases.customTabsUseCases,
-                sessionId!!,
-                activity,
-            ),
-            owner = this,
-            view = view,
-        )
+        toolbar?.let { toolbar ->
+            engineView?.let { engineView ->
+                customTabsIntegration.set(
+                    feature = CustomTabsIntegration(
+                        requireContext(),
+                        requireComponents.core.store,
+                        toolbar,
+                        engineView,
+                        requireComponents.useCases.sessionUseCases,
+                        requireComponents.useCases.customTabsUseCases,
+                        sessionId!!,
+                        activity,
+                    ),
+                    owner = this,
+                    view = view,
+                )
+            }
+        }
+
 
         windowFeature.set(
             feature = CustomTabWindowFeature(
                 requireActivity(),
                 requireComponents.core.store,
-                sessionId,
+                sessionId!!,
             ),
             owner = this,
             view = view,
         )
 
-        hideToolbarFeature.set(
-            feature = WebAppHideToolbarFeature(
-                requireComponents.core.store,
-                requireComponents.core.customTabsStore,
-                sessionId,
-                manifest,
-            ) { toolbarVisible ->
-                toolbar.isVisible = toolbarVisible
-                webAppToolbarShouldBeVisible = toolbarVisible
-                if (!toolbarVisible) { engineView.setDynamicToolbarMaxHeight(0) }
-            },
-            owner = this,
-            view = toolbar,
-        )
+        toolbar?.let { toolbar ->
+            hideToolbarFeature.set(
+                feature = WebAppHideToolbarFeature(
+                    requireComponents.core.store,
+                    requireComponents.core.customTabsStore,
+                    sessionId,
+                    manifest,
+                ) { toolbarVisible ->
+                    toolbar.isVisible = toolbarVisible
+                    webAppToolbarShouldBeVisible = toolbarVisible
+                    if (!toolbarVisible) { engineView?.setDynamicToolbarMaxHeight(0) }
+                },
+                owner = this,
+                view = toolbar,
+            )
+        }
 
         if (manifest != null) {
             val activity = requireActivity()
