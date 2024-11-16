@@ -122,7 +122,7 @@ class AddonsFragment : Fragment(), AddonsManagerAdapterDelegate {
             requireContext().components.core.addonManager.installAddon(
                 url = addon.downloadUrl,
                 onSuccess = {
-                    scope.launch {
+                    scope.launch(Dispatchers.Main) {
                         runIfFragmentIsAttached {
                             isInstallationInProgress = false
                             this@AddonsFragment.view?.let { view ->
@@ -133,7 +133,7 @@ class AddonsFragment : Fragment(), AddonsManagerAdapterDelegate {
                     }
                 },
                 onError = { _ ->
-                    scope.launch {
+                    scope.launch(Dispatchers.Main) {
                         runIfFragmentIsAttached {
                             addonProgressOverlay.visibility = View.GONE
                             isInstallationInProgress = false
