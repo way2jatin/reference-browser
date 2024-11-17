@@ -9,13 +9,14 @@ import androidx.appcompat.app.AppCompatActivity
 import mozilla.components.concept.engine.webextension.isUnsupported
 import mozilla.components.feature.addons.update.GlobalAddonDependencyProvider
 import mozilla.components.support.webextensions.WebExtensionSupport
+import org.mozilla.reference.browser.Components
 import org.mozilla.reference.browser.R
-import org.mozilla.reference.browser.ext.components
 
 /**
  * An activity to manage add-ons.
  */
 class AddonsActivity : AppCompatActivity() {
+    val components by lazy { Components(application) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
